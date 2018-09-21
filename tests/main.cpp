@@ -24,11 +24,12 @@ int countOccurrences(std::string word, std::string &document) {
 void testAutobahn() {
     uWS::Hub h;
 
+    // let's test pmd + ssl and then pmd + sliding window
     uWS::Group<uWS::SERVER> *sslGroup = h.createGroup<uWS::SERVER>(uWS::PERMESSAGE_DEFLATE);
-    uWS::Group<uWS::SERVER> *group = h.createGroup<uWS::SERVER>(uWS::PERMESSAGE_DEFLATE);
+    uWS::Group<uWS::SERVER> *group = h.createGroup<uWS::SERVER>(uWS::PERMESSAGE_DEFLATE | uWS::SLIDING_DEFLATE_WINDOW);
 
     auto messageHandler = [](uWS::WebSocket<uWS::SERVER> *ws, char *message, size_t length, uWS::OpCode opCode) {
-        ws->send(message, length, opCode);
+        ws->send(message, length, opCode, nullptr, nullptr, true);
     };
 
     sslGroup->onMessage(messageHandler);
@@ -828,44 +829,44 @@ void testHTTP() {
         FILE *nc;
 
         // invalid data
-        nc = popen("nc localhost 3000 &> /dev/null", "w");
+        nc = popen("nc localhost 3000 > /dev/null 2>&1", "w");
         fputs("invalid http", nc);
         pclose(nc);
 
-        nc = popen("nc localhost 3000 &> /dev/null", "w");
+        nc = popen("nc localhost 3000 > /dev/null 2>&1", "w");
         fputs("\r\n\r\n", nc);
         pclose(nc);
 
-        nc = popen("nc localhost 3000 &> /dev/null", "w");
+        nc = popen("nc localhost 3000 > /dev/null 2>&1", "w");
         fputs("\r\n", nc);
         pclose(nc);
 
-        nc = popen("nc localhost 3000 &> /dev/null", "w");
+        nc = popen("nc localhost 3000 > /dev/null 2>&1", "w");
         fputs("\r\n\r", nc);
         pclose(nc);
 
-        nc = popen("nc localhost 3000 &> /dev/null", "w");
+        nc = popen("nc localhost 3000 > /dev/null 2>&1", "w");
         fputs("\r", nc);
         pclose(nc);
 
-        nc = popen("nc localhost 3000 &> /dev/null", "w");
+        nc = popen("nc localhost 3000 > /dev/null 2>&1", "w");
         fputs("\n", nc);
         pclose(nc);
 
-        nc = popen("nc localhost 3000 &> /dev/null", "w");
+        nc = popen("nc localhost 3000 > /dev/null 2>&1", "w");
         fputs("GET \r\n", nc);
         pclose(nc);
 
-        nc = popen("nc localhost 3000 &> /dev/null", "w");
+        nc = popen("nc localhost 3000 > /dev/null 2>&1", "w");
         fputs("GET / HTTP/1.1\r\n", nc);
         pclose(nc);
 
-        nc = popen("nc localhost 3000 &> /dev/null", "w");
+        nc = popen("nc localhost 3000 > /dev/null 2>&1", "w");
         fputs("GET / HTTP/1.1\r\nHost: localhost:3000", nc);
         pclose(nc);
 
         // segmented GET
-        nc = popen("nc localhost 3000 &> /dev/null", "w");
+        nc = popen("nc localhost 3000 > /dev/null 2>&1", "w");
         fputs("GET /segme", nc);
         fflush(nc);
         usleep(100000);
@@ -884,7 +885,7 @@ void testHTTP() {
         pclose(nc);
 
         // segmented upgrade
-        nc = popen("nc localhost 3000 &> /dev/null", "w");
+        nc = popen("nc localhost 3000 > /dev/null 2>&1", "w");
         fputs("GET /upgra", nc);
         fflush(nc);
         usleep(100000);
@@ -907,14 +908,14 @@ void testHTTP() {
         pclose(nc);
 
         // slow GET should get disconnected
-        nc = popen("nc localhost 3000 &> /dev/null", "w");
+        nc = popen("nc localhost 3000 > /dev/null 2>&1", "w");
         sleep(3);
         fputs("GET /slowRequest HTTP/1.1\r\n\r\n", nc);
         pclose(nc);
 
         // post tests with increading data length
         for (int j = 0; j < 10; j++) {
-            nc = popen("nc localhost 3000 &> /dev/null", "w");
+            nc = popen("nc localhost 3000 > /dev/null 2>&1", "w");
             fputs("POST /postTest HTTP/1.1\r\nContent-Length: ", nc);
 
             int contentLength = j * 1000000;
@@ -931,24 +932,24 @@ void testHTTP() {
         // todo: two-in-one GET, two-in-one GET, upgrade, etc
 
         // segmented second GET
-        nc = popen("nc localhost 3000 &> /dev/null", "w");
+        nc = popen("nc localhost 3000 > /dev/null 2>&1", "w");
         fputs("GET /packedTest HTTP/1.1\r\n\r\nGET /packedTest HTTP/", nc);
         fflush(nc);
         usleep(100000);
         fputs("1.1\r\n\r\n", nc);
         pclose(nc);
 
-        nc = popen("nc localhost 3000 &> /dev/null", "w");
+        nc = popen("nc localhost 3000 > /dev/null 2>&1", "w");
         fputs("GET /packedTest HTTP/1.1\r\n\r\nGET /packedTest HTTP/1.1\r\n\r\n", nc);
         pclose(nc);
 
         // out of order responses
-        nc = popen("nc localhost 3000 &> /dev/null", "w");
+        nc = popen("nc localhost 3000 > /dev/null 2>&1", "w");
         fputs("GET /firstRequest HTTP/1.1\r\n\r\nGET /secondRequest HTTP/1.1\r\n\r\n", nc);
         pclose(nc);
 
         // shutdown
-        nc = popen("nc localhost 3000 &> /dev/null", "w");
+        nc = popen("nc localhost 3000 > /dev/null 2>&1", "w");
         fputs("PUT /closeServer HTTP/1.1\r\n\r\n", nc);
         pclose(nc);
         if (expectedRequests != 18) {
@@ -1154,6 +1155,37 @@ void testThreadSafety() {
 
         std::cout << "Everything received" << std::endl;
     }
+}
+
+void testAsync() {
+    uWS::Hub h;
+    uS::Async *a = new uS::Async(h.getLoop());
+
+    a->start([](uS::Async *a) {
+        a->close();
+    });
+
+    std::thread t([&h]() {
+        h.run();
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+    a->send();
+    t.join();
+    std::cout << "Falling through Async test" << std::endl;
+}
+
+#include "Room.h"
+
+void testRoom() {
+    uWS::Hub h;
+
+    uWS::Room<uWS::SERVER> *room = new uWS::Room<uWS::SERVER>(h.getLoop());
+
+
+
+    delete room;
 }
 
 int main(int argc, char *argv[])

@@ -1,4 +1,4 @@
-CPP_SHARED := -std=c++11 -O3 -I src -shared -fPIC src/Extensions.cpp src/Group.cpp src/Networking.cpp src/Hub.cpp src/Node.cpp src/WebSocket.cpp src/HTTPSocket.cpp src/Socket.cpp src/Epoll.cpp
+CPP_SHARED := -std=c++11 -O3 -I src -shared -fPIC src/Extensions.cpp src/Group.cpp src/Networking.cpp src/Hub.cpp src/Node.cpp src/WebSocket.cpp src/HTTPSocket.cpp src/Socket.cpp src/Epoll.cpp src/Room.cpp
 CPP_OPENSSL_OSX := -L/usr/local/opt/openssl/lib -I/usr/local/opt/openssl/include
 CPP_OSX := -stdlib=libc++ -mmacosx-version-min=10.7 -undefined dynamic_lookup $(CPP_OPENSSL_OSX)
 
@@ -13,14 +13,17 @@ install:
 	make install`(uname -s)`
 .PHONY: installLinux
 installLinux:
-	if [ -d "/usr/lib64" ]; then cp libuWS.so /usr/lib64/; else cp libuWS.so ${DESTDIR}/${LIBDIR}; fi
-	mkdir -p ${DESTDIR}/${INCLUDEDIR}/uWS
-	cp src/*.h ${DESTDIR}/${INCLUDEDIR}/uWS/
+	$(eval PREFIX ?= /usr)
+	if [ -d "/usr/lib64" ]; then mkdir -p $(PREFIX)/lib64 && cp libuWS.so $(PREFIX)/lib64/; else mkdir -p $(LIBDIR) && cp libuWS.so $(LIBDIR); fi
+	mkdir -p $(PREFIX)/include/uWS
+	cp src/*.h $(PREFIX)/include/uWS/
 .PHONY: installDarwin
 installDarwin:
-	cp libuWS.dylib /usr/local/lib/
-	mkdir -p /usr/local/include/uWS
-	cp src/*.h /usr/local/include/uWS/
+	$(eval PREFIX ?= /usr/local)
+	mkdir -p $(PREFIX)/lib
+	cp libuWS.dylib $(PREFIX)/lib/
+	mkdir -p $(PREFIX)/include/uWS
+	cp src/*.h $(PREFIX)/include/uWS/
 .PHONY: clean
 clean:
 	rm -f libuWS.so
