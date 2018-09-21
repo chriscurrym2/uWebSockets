@@ -13,9 +13,9 @@ install:
 	make install`(uname -s)`
 .PHONY: installLinux
 installLinux:
-	if [ -d "/usr/lib64" ]; then cp libuWS.so /usr/lib64/; else cp libuWS.so ${LIBDIR}; fi
-	mkdir -p ${INCLUDEDIR}/uWS
-	cp src/*.h ${INCLUDEDIR}/uWS/
+	if [ -d "/usr/lib64" ]; then cp libuWS.so /usr/lib64/; else cp libuWS.so ${DESTDIR}/${LIBDIR}; fi
+	mkdir -p ${DESTDIR}/${INCLUDEDIR}/uWS
+	cp src/*.h ${DESTDIR}/${INCLUDEDIR}/uWS/
 .PHONY: installDarwin
 installDarwin:
 	cp libuWS.dylib /usr/local/lib/
